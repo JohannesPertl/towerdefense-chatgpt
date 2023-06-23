@@ -23,7 +23,7 @@ pygame.display.set_caption("Tower Defense")
 # Player class
 class Player:
     def __init__(self):
-        self.lives = 5
+        self.lives = 1
         self.gold = 100
         self.font = pygame.font.Font(None, 30)
 
@@ -126,6 +126,9 @@ bullets = []
 # Game loop
 running = True
 clock = pygame.time.Clock()
+# Enemy spawn timer
+enemy_spawn_timer = 0
+enemy_spawn_delay = 500  # Delay in milliseconds (2 seconds)
 
 while running:
     clock.tick(60)  # Frame rate
@@ -164,8 +167,19 @@ while running:
     enemies = [enemy for enemy in enemies if enemy.health > 0]
 
     # Check if all enemies are defeated or player's lives are depleted
-    if len(enemies) == 0 or player.lives <= 0:
-        running = False
+    result_text = ""
+    if player.lives <= 0:
+        result_text = "YOU LOSE"
+
+    # Spawn new enemy
+    enemy_spawn_timer += clock.get_rawtime()
+    if enemy_spawn_timer >= enemy_spawn_delay:
+        enemy = Enemy()
+        enemies.append(enemy)
+        enemy_spawn_timer = 0
+
+        # Randomize enemy spawn delay for the next enemy
+        enemy_spawn_delay = random.randint(20, 500)  # Random delay between 2 to 5 seconds (in milliseconds)
 
     # Draw the game window
     win.fill((0, 0, 0))  # Clear the screen
@@ -185,7 +199,11 @@ while running:
     # Draw player stats
     player.draw()
 
+    # Draw result text
+    font = pygame.font.Font(None, 50)
+    result_surface = font.render(result_text, True, WHITE)
+    result_rect = result_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    win.blit(result_surface, result_rect)
+
     # Update the game window
     pygame.display.update()
-
-pygame.quit()
