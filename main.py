@@ -24,7 +24,7 @@ pygame.display.set_caption("Tower Defense")
 class Player:
     def __init__(self):
         self.lives = 1
-        self.gold = 100
+        self.gold = 20
         self.font = pygame.font.Font(None, 30)
 
     def draw(self):
@@ -44,9 +44,46 @@ class Enemy:
         self.vel = 1  # Slower movement speed
         self.health = 10
         self.max_health = self.health
+        self.y_direction = 0  # Initialize y-coordinate direction
+        self.y_change_timer = random.uniform(1, 3)  # Random initial change timer
+        self.y_change_delay = random.uniform(1, 3)  # Random initial change delay
+        self.cooldown = 0
 
     def move(self):
         self.x += self.vel
+
+        # Update y-coordinate direction and timer
+        self.y_change_timer += clock.get_time() / 1000.0  # Convert milliseconds to seconds
+        if self.y_change_timer >= self.y_change_delay:
+            self.y_direction = random.uniform(-1, 1)  # Randomize y-coordinate direction
+            self.y_change_timer = 0  # Reset the timer
+            self.y_change_delay = random.uniform(1, 3)  # Randomize the change delay
+
+        self.y += self.y_direction * self.vel
+
+        # Ensure enemy stays within the screen boundaries
+        self.y = max(self.y, 0)
+        self.y = min(self.y, HEIGHT - self.height)
+
+    def shoot(self, towers, bullets):
+        if self.cooldown <= 0:
+            nearest_tower = self.get_nearest_tower(towers)
+            if nearest_tower:
+                bullet = Bullet(self.x + self.width / 2, self.y + self.height / 2, nearest_tower, 10)  # Change the damage to 5 or any other value you want
+                bullets.append(bullet)
+                self.cooldown = 60  # Reset the cooldown
+        else:
+            self.cooldown -= 1
+
+    def get_nearest_tower(self, towers):
+        nearest_tower = None
+        shortest_distance = float('inf')
+        for tower in towers:
+            distance = ((self.x - tower.x) ** 2 + (self.y - tower.y) ** 2) ** 0.5
+            if distance < shortest_distance:
+                shortest_distance = distance
+                nearest_tower = tower
+        return nearest_tower
 
     def draw(self):
         pygame.draw.rect(win, RED, (self.x, self.y, self.width, self.height))
@@ -91,14 +128,27 @@ class Tower:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.width = 50
-        self.height = 50
+        self.width = 35
+        self.height = 35
         self.range = 150
         self.damage = 1
+        self.health = 100
+        self.max_health = self.health
         self.cooldown = 0
 
     def draw(self):
         pygame.draw.rect(win, GREEN, (self.x, self.y, self.width, self.height))
+        self.draw_health_bar()
+
+    def draw_health_bar(self):
+        bar_width = self.width
+        bar_height = 5
+        health_bar_x = self.x
+        health_bar_y = self.y - 10
+
+        fill_width = (self.health / self.max_health) * bar_width
+        pygame.draw.rect(win, GREEN, (health_bar_x, health_bar_y, fill_width, bar_height))
+        pygame.draw.rect(win, WHITE, (health_bar_x, health_bar_y, bar_width, bar_height), 1)
 
     def shoot(self, enemies, bullets):
         if self.cooldown <= 0:
@@ -117,6 +167,7 @@ class Tower:
 
 
 
+
 # Create objects
 player = Player()
 enemies = [Enemy()]
@@ -129,6 +180,8 @@ clock = pygame.time.Clock()
 # Enemy spawn timer
 enemy_spawn_timer = 0
 enemy_spawn_delay = 500  # Delay in milliseconds (2 seconds)
+
+game_paused = False
 
 while running:
     clock.tick(60)  # Frame rate
@@ -143,9 +196,10 @@ while running:
             towers.append(tower)
             player.gold -= 10
 
-    # Move enemies
+    # Enemies actions
     for enemy in enemies:
         enemy.move()
+        enemy.shoot(towers, bullets)
 
         # Check if enemy reaches the right wall
         if enemy.reached_end():
@@ -166,6 +220,9 @@ while running:
     # Remove defeated enemies
     enemies = [enemy for enemy in enemies if enemy.health > 0]
 
+    # Remove defeated towers
+    towers = [tower for tower in towers if tower.health > 0]
+
     # Check if all enemies are defeated or player's lives are depleted
     result_text = ""
     if player.lives <= 0:
@@ -179,7 +236,7 @@ while running:
         enemy_spawn_timer = 0
 
         # Randomize enemy spawn delay for the next enemy
-        enemy_spawn_delay = random.randint(20, 500)  # Random delay between 2 to 5 seconds (in milliseconds)
+        enemy_spawn_delay = random.randint(20, 600)  # Random delay between 2 to 5 seconds (in milliseconds)
 
     # Draw the game window
     win.fill((0, 0, 0))  # Clear the screen
@@ -192,9 +249,15 @@ while running:
     for tower in towers:
         tower.draw()
 
-    # Draw bullets
+    # Move bullets and check for collisions
     for bullet in bullets:
         bullet.draw()
+        bullet.move()
+        if bullet.hit():
+            bullet.target.health -= bullet.damage
+            if bullet.target.health <= 0:
+                player.gold += 10  # Increase gold count for each enemy kill
+            bullets.remove(bullet)
 
     # Draw player stats
     player.draw()
