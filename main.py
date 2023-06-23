@@ -69,7 +69,8 @@ class Enemy:
         if self.cooldown <= 0:
             nearest_tower = self.get_nearest_tower(towers)
             if nearest_tower:
-                bullet = Bullet(self.x + self.width / 2, self.y + self.height / 2, nearest_tower, 10)  # Change the damage to 5 or any other value you want
+                bullet = Bullet(self.x + self.width / 2, self.y + self.height / 2, nearest_tower,
+                                10)  # Change the damage to 5 or any other value you want
                 bullets.append(bullet)
                 self.cooldown = 60  # Reset the cooldown
         else:
@@ -101,6 +102,8 @@ class Enemy:
         fill_width = (self.health / self.max_health) * bar_width
         pygame.draw.rect(win, GREEN, (health_bar_x, health_bar_y, fill_width, bar_height))
         pygame.draw.rect(win, WHITE, (health_bar_x, health_bar_y, bar_width, bar_height), 1)
+
+
 class Bullet:
     def __init__(self, x, y, target, damage):
         self.x = x
@@ -122,6 +125,7 @@ class Bullet:
 
     def hit(self):
         return math.hypot(self.target.x - self.x, self.target.y - self.y) < self.radius
+
 
 # Tower class
 class Tower:
@@ -164,8 +168,6 @@ class Tower:
     def is_within_range(self, enemy):
         distance = ((self.x - enemy.x) ** 2 + (self.y - enemy.y) ** 2) ** 0.5
         return distance <= self.range
-
-
 
 
 # Create objects
@@ -286,5 +288,3 @@ while running:
 
     # Update the game window
     pygame.display.update()
-
-
