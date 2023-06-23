@@ -173,7 +173,6 @@ player = Player()
 enemies = [Enemy()]
 towers = []
 bullets = []
-
 # Game loop
 running = True
 clock = pygame.time.Clock()
@@ -181,7 +180,7 @@ clock = pygame.time.Clock()
 enemy_spawn_timer = 0
 enemy_spawn_delay = 500  # Delay in milliseconds (2 seconds)
 
-game_paused = False
+game_over = False
 
 while running:
     clock.tick(60)  # Frame rate
@@ -190,53 +189,62 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN and player.gold >= 10:
+        elif event.type == pygame.KEYDOWN:
+            if game_over and event.key == pygame.K_y:
+                # Restart the game by re-initializing all objects
+                player = Player()
+                enemies = [Enemy()]
+                towers = []
+                bullets = []
+                game_over = False
+        elif event.type == pygame.MOUSEBUTTONDOWN and player.gold >= 10 and not game_over:
             mouse_pos = pygame.mouse.get_pos()
             tower = Tower(mouse_pos[0], mouse_pos[1])
             towers.append(tower)
             player.gold -= 10
 
-    # Enemies actions
-    for enemy in enemies:
-        enemy.move()
-        enemy.shoot(towers, bullets)
+    if not game_over:
+        # Enemies actions
+        for enemy in enemies:
+            enemy.move()
+            enemy.shoot(towers, bullets)
 
-        # Check if enemy reaches the right wall
-        if enemy.reached_end():
-            player.lives -= 1
-            enemies.remove(enemy)
+            # Check if enemy reaches the right wall
+            if enemy.reached_end():
+                player.lives -= 1
+                enemies.remove(enemy)
 
-    # Shoot bullets from towers
-    for tower in towers:
-        tower.shoot(enemies, bullets)
+        # Shoot bullets from towers
+        for tower in towers:
+            tower.shoot(enemies, bullets)
 
-    # Move bullets and check for collisions
-    for bullet in bullets:
-        bullet.move()
-        if bullet.hit():
-            bullet.target.health -= bullet.damage
-            bullets.remove(bullet)
+        # Move bullets and check for collisions
+        for bullet in bullets:
+            bullet.move()
+            if bullet.hit():
+                bullet.target.health -= bullet.damage
+                bullets.remove(bullet)
 
-    # Remove defeated enemies
-    enemies = [enemy for enemy in enemies if enemy.health > 0]
+        # Remove defeated enemies
+        enemies = [enemy for enemy in enemies if enemy.health > 0]
 
-    # Remove defeated towers
-    towers = [tower for tower in towers if tower.health > 0]
+        # Remove defeated towers
+        towers = [tower for tower in towers if tower.health > 0]
 
-    # Check if all enemies are defeated or player's lives are depleted
-    result_text = ""
-    if player.lives <= 0:
-        result_text = "YOU LOSE"
+        # Check if all enemies are defeated or player's lives are depleted
+        if player.lives <= 0:
+            game_over = True
 
-    # Spawn new enemy
-    enemy_spawn_timer += clock.get_rawtime()
-    if enemy_spawn_timer >= enemy_spawn_delay:
-        enemy = Enemy()
-        enemies.append(enemy)
-        enemy_spawn_timer = 0
+        # Spawn new enemy
+        if not game_over:
+            enemy_spawn_timer += clock.get_rawtime()
+            if enemy_spawn_timer >= enemy_spawn_delay:
+                enemy = Enemy()
+                enemies.append(enemy)
+                enemy_spawn_timer = 0
 
-        # Randomize enemy spawn delay for the next enemy
-        enemy_spawn_delay = random.randint(20, 600)  # Random delay between 2 to 5 seconds (in milliseconds)
+                # Randomize enemy spawn delay for the next enemy
+                enemy_spawn_delay = random.randint(20, 600)  # Random delay between 2 to 5 seconds (in milliseconds)
 
     # Draw the game window
     win.fill((0, 0, 0))  # Clear the screen
@@ -264,9 +272,19 @@ while running:
 
     # Draw result text
     font = pygame.font.Font(None, 50)
+    result_text = "YOU LOSE" if game_over else ""
     result_surface = font.render(result_text, True, WHITE)
     result_rect = result_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
     win.blit(result_surface, result_rect)
 
+    if game_over:
+        font = pygame.font.Font(None, 30)
+        restart_text = "Press Y to restart"
+        restart_surface = font.render(restart_text, True, WHITE)
+        restart_rect = restart_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 40))
+        win.blit(restart_surface, restart_rect)
+
     # Update the game window
     pygame.display.update()
+
+
